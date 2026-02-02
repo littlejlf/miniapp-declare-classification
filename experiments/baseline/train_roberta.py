@@ -65,6 +65,9 @@ with open(DATA_FILE, 'r', encoding='utf-8') as f:
 df = pd.DataFrame(data)
 logger.info(f"加载数据完成，共 {len(df)} 条")
 
+# 确保labels是list类型（多标签格式）
+df['labels'] = df['labels'].apply(lambda x: x if isinstance(x, list) else [x])
+
 # 划分训练集和验证集
 train_df, val_df = train_test_split(df, test_size=0.2, random_state=42)
 logger.info(f"训练集: {len(train_df)} 条, 验证集: {len(val_df)} 条")
@@ -88,19 +91,39 @@ model = AutoModelForSequenceClassification.from_pretrained(
 
 # --- 5. 定义数据处理函数 ---
 def tokenize_function(examples):
-    #todo 这里要改 加理由
-    return tokenizer(examples["text"], truncation=True, max_length=128)
+    # Tokenize 文本
+    tokenized = tokenizer(examples["text"], truncation=True, max_length=128)
+    return tokenized
 
 logger.info("对数据集进行Tokenization...")
 tokenized_datasets = dataset_dict.map(tokenize_function, batched=True)
 
-# 移除不再需要的列并设置格式
+# 移除不再需要的列（保留labels）
 # 注意: 'labels' 列现在是核心部分，不能移除
 columns_to_remove = [col for col in tokenized_datasets["train"].column_names if col not in ["input_ids", "token_type_ids", "attention_mask", "labels"]]
 tokenized_datasets = tokenized_datasets.remove_columns(columns_to_remove)
+
+# 【关键修复】对于多标签分类，labels必须是float类型
+# 方法1: 不使用set_format，保持numpy数组
+# 方法2: 使用自定义的DataCollator来转换类型
+
+class MultiLabelDataCollator(DataCollatorWithPadding):
+    """自定义DataCollator，确保labels是float类型"""
+    def __call__(self, features):
+        batch = super().__call__(features)
+        # 将labels从LongTensor转换为FloatTensor
+        if "labels" in batch:
+            batch["labels"] = batch["labels"].float()
+        return batch
+
+data_collator = MultiLabelDataCollator(tokenizer=tokenizer)
+
+# 设置格式
 tokenized_datasets.set_format("torch")
 
-data_collator = DataCollatorWithPadding(tokenizer=tokenizer)
+# 验证labels类型
+sample_label = tokenized_datasets["train"][0]["labels"]
+logger.info(f"labels类型（转换前）: {type(sample_label)}, 内容: {sample_label}")
 
 # --- 6. 定义多标签评估指标 ---
 def compute_metrics(pred):
