@@ -1,0 +1,60 @@
+# 数据配置文件
+
+# 数据路径
+paths:
+  raw_data_dir: "data/raw"
+  processed_data_dir: "data/processed"
+  augmented_data_dir: "data/augmented"
+  all_declares: "data/raw/all_declares.jsonl"
+  labeled_data: "data/raw/aggregate_datas_label.jsonl"
+
+# 数据文件信息
+files:
+  all_declares:
+    path: "data/raw/all_declares.jsonl"
+    format: "jsonl"
+    encoding: "utf-8"
+    total_lines: 26940
+
+  labeled_data:
+    path: "data/raw/aggregate_datas_label.jsonl"
+    format: "jsonl"
+    encoding: "utf-8"
+    total_lines: 1137
+
+# 数据字段
+fields:
+  app_id: "appid"
+  declaration: "declare"
+  necessity_label: "necessity"  # 0: 必要, 1: 不必要
+  clarity_label: "clarity"      # 0: 清晰, 1: 模糊
+
+# 数据增强配置
+augmentation:
+  enabled: true
+  strategies:
+    - name: "word_reorder"
+      enabled: true
+      variations: 3
+    - name: "synonym_replace"
+      enabled: true
+      variations: 2
+    - name: "adverb_enhance"
+      enabled: true
+      variations: 1
+  output_file: "data/augmented/augmented_{timestamp}.jsonl"
+
+# 数据预处理配置
+preprocessing:
+  remove_duplicates: true
+  min_length: 5  # 最小字符长度
+  max_length: 512  # 最大字符长度
+  remove_special_chars: false  # 是否移除特殊字符（保留中文标点）
+  lowercase: false  # 中文不区分大小写
+
+# 数据统计
+statistics:
+  compute_class_distribution: true
+  compute_text_length_stats: true
+  save_stats: true
+  stats_output: "data/processed/data_stats.json"

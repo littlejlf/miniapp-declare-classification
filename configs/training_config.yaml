@@ -1,0 +1,57 @@
+# 训练配置文件
+
+# 数据集划分
+dataset:
+  train_ratio: 0.8
+  val_ratio: 0.1
+  test_ratio: 0.1
+  stratify: true  # 按标签分层采样
+  random_seed: 42
+
+# RoBERTa 训练参数
+roberta_training:
+  epochs: 10
+  batch_size: 16
+  learning_rate: 2.0e-5
+  warmup_steps: 500
+  weight_decay: 0.01
+  gradient_accumulation_steps: 1
+  max_grad_norm: 1.0
+  early_stopping_patience: 3
+  evaluation_strategy: "steps"
+  eval_steps: 500
+  save_steps: 500
+  save_total_limit: 3
+
+# 优化器配置
+optimizer:
+  type: "AdamW"
+  betas: [0.9, 0.999]
+  eps: 1.0e-8
+
+# 学习率调度器
+scheduler:
+  type: "linear"  # linear, cosine, constant
+  num_warmup_steps: 500
+
+# 日志配置
+logging:
+  log_level: "INFO"
+  log_interval: 100
+  wandb_project: null  # 设为项目名以启用wandb
+  wandb_entity: null
+
+# 设备配置
+device:
+  use_cuda: true
+  cuda_device: 0
+  num_workers: 4
+  pin_memory: true
+
+# 实验配置
+experiment:
+  name: "miniapp_privacy_classification"
+  save_dir: "results/models"
+  log_dir: "results/logs"
+  checkpoint_dir: "results/models/checkpoints"
+  seed: 42

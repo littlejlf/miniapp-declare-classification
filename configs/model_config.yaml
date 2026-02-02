@@ -1,0 +1,37 @@
+# 模型配置文件
+
+# RoBERTa 模型配置
+roberta:
+  model_name: "hfl/chinese-roberta-wwm-ext"
+  num_labels: 2  # 必要性和清晰性二元分类
+  max_length: 512
+  hidden_size: 768
+  num_attention_heads: 12
+  num_hidden_layers: 12
+  intermediate_size: 3072
+
+# LLM 模型配置
+llm:
+  provider: "dashscope"
+  model_name: "qwen-plus"  # 或其他微调版本
+  temperature: 0.1
+  top_p: 0.9
+  max_tokens: 2000
+  api_key_env: "DASHSCOPE_API_KEY"
+
+# 蒸馏配置
+distillation:
+  temperature: 3.0  # 蒸馏温度
+  alpha: 0.7  # 蒸馏损失权重
+  teacher_model: "stf_enhanced_llm"
+  student_model: "hfl/chinese-roberta-wwm-ext"
+
+# 分类维度配置
+classification:
+  dimensions:
+    - name: "necessity"
+      labels: ["necessary", "unnecessary"]
+      description: "数据收集是否必要"
+    - name: "clarity"
+      labels: ["clear", "ambiguous"]
+      description: "声明是否清晰说明数据用途"
