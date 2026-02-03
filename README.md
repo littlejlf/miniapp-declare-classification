@@ -72,12 +72,38 @@ pip install -r requirements.txt
 
 ### 运行实验
 
-#### 1. 训练RoBERTa基线模型
+#### 1. 训练RoBERTa模型
+
+项目提供两种训练方式：
+
+**方式1: 多标签分类（一个模型）**
 
 ```bash
 cd experiments/baseline
 python train_roberta.py
 ```
+
+**方式2: 单任务分类（两个独立模型，推荐）**
+
+```bash
+cd experiments/baseline
+
+# 训练必要性分类模型
+python train_necessity.py
+
+# 训练表述模糊分类模型
+python train_ambiguity.py
+
+# 或批量训练两个模型
+python train_both_tasks.py
+```
+
+单任务分类支持：
+- 独立的类别权重设置
+- 针对性的超参数优化
+- 更好的单任务性能
+
+详细说明请参阅：[BERT 训练指南](docs/BERT_TRAINING_GUIDE.md)
 
 #### 2. LLM提示词分类
 
@@ -180,6 +206,7 @@ MIT License
 ## 文档索引
 
 - [LLM 分类器使用指南](docs/LLM_CLASSIFICATION_GUIDE.md) - LLM 分类器详细使用说明
+- [BERT 训练指南](docs/BERT_TRAINING_GUIDE.md) - BERT 单任务模型训练指南
 - [项目详细文档](docs/project_readme.md) - 研究背景与实验方法
 - [AUTODL 使用指南](docs/AUTODL_GUIDE.md) - AutoDL 平台使用说明
 - [依赖说明](docs/DEPENDENCIES.md) - 项目依赖详解
