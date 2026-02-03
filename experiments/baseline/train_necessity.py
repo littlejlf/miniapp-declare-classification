@@ -20,6 +20,7 @@ import torch
 import numpy as np
 import json
 from collections import Counter
+from typing import Optional
 from datasets import Dataset, DatasetDict
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, precision_recall_fscore_support, classification_report, confusion_matrix
@@ -95,11 +96,11 @@ class WeightedTrainer(Trainer):
 
         return (loss, outputs) if return_outputs else loss
 
-    def log(self, logs: dict[str, float]) -> None:
+    def log(self, logs: dict[str, float], start_time: Optional[float] = None) -> None:
         """
         重写log方法，记录训练历史
         """
-        super().log(logs)
+        super().log(logs, start_time)
         # 只在评估时记录（包含eval_*指标的logs）
         if any(key.startswith('eval_') for key in logs.keys()):
             self.training_history.append(logs.copy())

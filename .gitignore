@@ -94,3 +94,5 @@ experiments/baseline/model/
 
 # History
 .history/
+
+error.txt

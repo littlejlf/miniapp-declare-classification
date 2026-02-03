@@ -12,6 +12,7 @@ import pandas as pd
 import torch
 import numpy as np
 import json  # 用于JSONL数据
+from typing import Optional
 from datasets import Dataset, DatasetDict
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, precision_recall_fscore_support
@@ -180,8 +181,8 @@ class HistoryTrainer(Trainer):
         super().__init__(*args, **kwargs)
         self.training_history = []
 
-    def log(self, logs: dict) -> None:
-        super().log(logs)
+    def log(self, logs: dict, start_time: Optional[float] = None) -> None:
+        super().log(logs, start_time)
         if any(key.startswith('eval_') for key in logs.keys()):
             self.training_history.append(logs.copy())
 
