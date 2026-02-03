@@ -90,6 +90,7 @@ api_keys.txt
 checkpoints/
 wandb/
 runs/
+experiments/baseline/model/
 
 # History
 .history/

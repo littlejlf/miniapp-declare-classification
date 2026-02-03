@@ -40,6 +40,9 @@ miniapp-declare-classification/
 ├── data_processing/           # 数据处理工具
 ├── configs/                   # 配置文件
 ├── prompts/                   # 提示词管理
+│   ├── classification_prompt.md      # 统一分类提示词
+│   ├── necessity_violation_prompt.md  # 必要性违规提示词
+│   └── ambiguity_violation_prompt.md  # 表述模糊违规提示词
 ├── utils/                     # 工具模块
 ├── results/                   # 实验结果
 │   ├── models/                # 训练模型
@@ -78,10 +81,25 @@ python train_roberta.py
 
 #### 2. LLM提示词分类
 
+项目提供三种 LLM 分类器：
+
 ```bash
 cd experiments/llm_prompting
-python classify_async.py
+
+# 方式1: 统一分类器（同时评估两个维度）
+python classify_unified.py
+
+# 方式2: 必要性独立分类��
+python classify_necessity.py
+
+# 方式3: 表述模糊独立分类器
+python classify_ambiguity.py
+
+# 方式4: 运行所有分类器并对比（推荐）
+python run_all_classifications.py
 ```
+
+详细使用说明请参阅：[LLM 分类器使用指南](docs/LLM_CLASSIFICATION_GUIDE.md)
 
 #### 3. 数据增强
 
@@ -158,6 +176,14 @@ graph LR
 ## 许可证
 
 MIT License
+
+## 文档索引
+
+- [LLM 分类器使用指南](docs/LLM_CLASSIFICATION_GUIDE.md) - LLM 分类器详细使用说明
+- [项目详细文档](docs/project_readme.md) - 研究背景与实验方法
+- [AUTODL 使用指南](docs/AUTODL_GUIDE.md) - AutoDL 平台使用说明
+- [依赖说明](docs/DEPENDENCIES.md) - 项目依赖详解
+- [Bug 修复记录](docs/BUG_FIXES.md) - 已修复问题记录
 
 ## 联系方式
 
