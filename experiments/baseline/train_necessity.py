@@ -29,6 +29,7 @@ from transformers import (
     TrainingArguments,
     Trainer,
     DataCollatorWithPadding,
+    EarlyStoppingCallback,
 )
 
 from utils.logger import get_logger
@@ -40,12 +41,16 @@ DATA_FILE = project_root / "data" / "raw" / "aggregate_datas_label.jsonl"
 # AutoDL 临时存储目录（训练速度更快）
 OUTPUT_DIR = Path("/root/autodl-tmp/roberta_necessity_classifier")
 
-# 训练参数
-NUM_EPOCHS = 5
-BATCH_SIZE = 16
-LEARNING_RATE = 2e-5
-WARMUP_STEPS = 100
-WEIGHT_DECAY = 0.01
+# 训练参数（优化后的配置）
+NUM_EPOCHS = 10               # 增加上限，配合早停
+BATCH_SIZE = 16               # 保持不变，适合小数据集
+LEARNING_RATE = 2e-5          # 保持不变，BERT微调标准值
+WARMUP_STEPS = 40             # 减少到约0.7个epoch (57 steps/epoch * 0.7 ≈ 40)
+WEIGHT_DECAY = 0.01           # 保持不变，防止过拟合
+MAX_GRAD_NORM = 1.0           # 新增：梯度裁剪，防止梯度爆炸
+
+# 早停配置
+EARLY_STOPPING_PATIENCE = 3   # 3个epoch无改善就停止
 
 # 类别权重配置
 # 自动计算权重或手动指定
@@ -267,12 +272,21 @@ def main():
         greater_is_better=True,
         weight_decay=WEIGHT_DECAY,
         warmup_steps=WARMUP_STEPS,
-        save_total_limit=1,  # 只保留最佳模型
-        report_to=None,  # 不使用wandb
+        max_grad_norm=MAX_GRAD_NORM,      # 梯度裁剪
+        lr_scheduler_type="cosine",        # 余弦退火学习率调度
+        save_total_limit=1,                # 只保留最佳模型
+        report_to=None,                    # 不使用wandb
+        seed=42,                           # 随机种子，确保可复现
     )
 
     # 6. 初始化Trainer（使用带权重的版本）
     data_collator = DataCollatorWithPadding(tokenizer=tokenizer)
+
+    # 早停回调
+    early_stopping = EarlyStoppingCallback(
+        early_stopping_patience=EARLY_STOPPING_PATIENCE,
+        early_stopping_threshold=0.001  # 改善小于0.001视为无改善
+    )
 
     trainer = WeightedTrainer(
         model=model,
@@ -282,7 +296,8 @@ def main():
         tokenizer=tokenizer,
         data_collator=data_collator,
         compute_metrics=compute_metrics,
-        class_weights=class_weights
+        class_weights=class_weights,
+        callbacks=[early_stopping]  # 添加早停回调
     )
 
     # 7. 开始训练

@@ -21,6 +21,7 @@ from transformers import (
     TrainingArguments,
     Trainer,
     DataCollatorWithPadding,
+    EarlyStoppingCallback,
 )
 
 # 导入配置
@@ -33,8 +34,17 @@ MODEL_NAME = "hfl/chinese-roberta-wwm-ext"
 DATA_FILE = project_root / "data" / "raw" / "aggregate_datas_label.jsonl"
 # AutoDL 临时存储目录（训练速度更快）
 OUTPUT_DIR = Path("/root/autodl-tmp/roberta_multilabel_classifier")
-NUM_EPOCHS = 3
-BATCH_SIZE = 16
+
+# 训练参数（优化后的配置）
+NUM_EPOCHS = 10               # 增加上限，配合早停
+BATCH_SIZE = 16               # 保持不变
+LEARNING_RATE = 2e-5          # BERT微调标准值
+WARMUP_STEPS = 40             # 减少到约0.7个epoch
+WEIGHT_DECAY = 0.01           # 防止过拟合
+MAX_GRAD_NORM = 1.0           # 梯度裁剪
+
+# 早停配置
+EARLY_STOPPING_PATIENCE = 3   # 3个epoch无改善就停止
 
 # 配置日志
 logger = get_logger(__name__)
@@ -146,16 +156,20 @@ training_args = TrainingArguments(
     num_train_epochs=NUM_EPOCHS,
     per_device_train_batch_size=BATCH_SIZE,
     per_device_eval_batch_size=BATCH_SIZE,
+    learning_rate=LEARNING_RATE,
     logging_steps=10,
     eval_strategy="epoch",
     save_strategy="epoch",
     load_best_model_at_end=True,
-    metric_for_best_model="f1_macro", # 使用新的F1指标名
+    metric_for_best_model="f1_macro",
     greater_is_better=True,
-    weight_decay=0.01,
-    warmup_steps=500,
-    save_total_limit=1,  # 只保留最佳模型
-    report_to=None  # 不使用wandb
+    weight_decay=WEIGHT_DECAY,
+    warmup_steps=WARMUP_STEPS,
+    max_grad_norm=MAX_GRAD_NORM,      # 梯度裁剪
+    lr_scheduler_type="cosine",        # 余弦退火学习率调度
+    save_total_limit=1,                # 只保留最佳模型
+    report_to=None,                    # 不使用wandb
+    seed=42,                           # 随机种子，确保可复现
 )
 
 # --- 8. 初始化并开始训练 ---
@@ -171,6 +185,12 @@ class HistoryTrainer(Trainer):
         if any(key.startswith('eval_') for key in logs.keys()):
             self.training_history.append(logs.copy())
 
+# 早停回调
+early_stopping = EarlyStoppingCallback(
+    early_stopping_patience=EARLY_STOPPING_PATIENCE,
+    early_stopping_threshold=0.001
+)
+
 trainer = HistoryTrainer(
     model=model,
     args=training_args,
@@ -179,6 +199,7 @@ trainer = HistoryTrainer(
     tokenizer=tokenizer,
     data_collator=data_collator,
     compute_metrics=compute_metrics,
+    callbacks=[early_stopping]  # 添加早停回调
 )
 
 logger.info("开始多标签分类训练...")
