@@ -256,7 +256,7 @@ def main():
         greater_is_better=True,
         weight_decay=WEIGHT_DECAY,
         warmup_steps=WARMUP_STEPS,
-        save_total_limit=3,
+        save_total_limit=1,  # 只保留最佳模型
         report_to=None,  # 不使用wandb
     )
 

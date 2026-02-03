@@ -152,7 +152,9 @@ training_args = TrainingArguments(
     metric_for_best_model="f1_macro", # 使用新的F1指标名
     greater_is_better=True,
     weight_decay=0.01,
-    warmup_steps=500
+    warmup_steps=500,
+    save_total_limit=1,  # 只保留最佳模型
+    report_to=None  # 不使用wandb
 )
 
 # --- 8. 初始化并开始训练 ---
