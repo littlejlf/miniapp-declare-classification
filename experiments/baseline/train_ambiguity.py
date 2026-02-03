@@ -37,7 +37,8 @@ from utils.metrics import format_metrics_report
 # ==================== 配置参数 ====================
 MODEL_NAME = "hfl/chinese-roberta-wwm-ext"
 DATA_FILE = project_root / "data" / "raw" / "aggregate_datas_label.jsonl"
-OUTPUT_DIR = project_root / "results" / "models" / "roberta_ambiguity_classifier"
+# AutoDL 临时存储目录（训练速度更快）
+OUTPUT_DIR = Path("/root/autodl-tmp/roberta_ambiguity_classifier")
 
 # 训练参数
 NUM_EPOCHS = 5

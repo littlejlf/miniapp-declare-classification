@@ -31,7 +31,8 @@ from utils.metrics import format_metrics_report
 MODEL_NAME = "hfl/chinese-roberta-wwm-ext"
 # 使用相对路径，适配AutoDL和本地环境
 DATA_FILE = project_root / "data" / "raw" / "aggregate_datas_label.jsonl"
-OUTPUT_DIR = project_root / "results" / "models" / "roberta_privacy_multilabel_classifier"
+# AutoDL 临时存储目录（训练速度更快）
+OUTPUT_DIR = Path("/root/autodl-tmp/roberta_multilabel_classifier")
 NUM_EPOCHS = 3
 BATCH_SIZE = 16
 
