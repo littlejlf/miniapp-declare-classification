@@ -1,0 +1,136 @@
+"""
+数据集标签分布分析报告
+========================
+
+数据文件: aggregate_datas_label.jsonl
+生成时间: 2024-02-02
+"""
+
+import json
+from pathlib import Path
+from collections import Counter
+
+def analyze_label_distribution():
+    data_file = Path('data/raw/aggregate_datas_label.jsonl')
+
+    data = []
+    with open(data_file, 'r', encoding='utf-8') as f:
+        for line in f:
+            if line.strip():
+                item = json.loads(line.strip())
+                labels = item.get('label', [0, 0])
+                data.append({
+                    'text': item.get('statement', ''),
+                    'necessity': labels[0],
+                    'clarity': labels[1] if len(labels) > 1 else 0,
+                    'labels': labels
+                })
+
+    print("=" * 80)
+    print("📊 小程序隐私声明数据集 - 标签分布分析报告")
+    print("=" * 80)
+    print(f"\n总数据量: {len(data)} 条\n")
+
+    # 统计标签组合
+    label_combinations = Counter((d['necessity'], d['clarity']) for d in data)
+
+    print("🏷️  标签组合分布:")
+    print("-" * 80)
+    print(f"{'类别':<30} {'标签':<15} {'数量':>8} {'占比':>10} {'分布图'}")
+    print("-" * 80)
+
+    for (necessity, clarity), count in label_combinations.most_common():
+        percentage = count / len(data) * 100
+        label_str = f"({necessity}, {clarity})"
+
+        if necessity == 0 and clarity == 0:
+            category = "✅ 无违规"
+        elif necessity == 1 and clarity == 0:
+            category = "⚠️  仅必要性违规"
+        elif necessity == 0 and clarity == 1:
+            category = "⚠️  仅清晰性违规"
+        elif necessity == 1 and clarity == 1:
+            category = "❌ 双重违规"
+        else:
+            category = "未知"
+
+        bar = '█' * int(percentage / 2)
+        print(f"{category:<30} {label_str:<15} {count:>8} {percentage:>9.2f}% {bar}")
+
+    print("\n" + "=" * 80)
+    print("📈 单独���度统计")
+    print("=" * 80)
+
+    # 单独统计每个维度
+    necessity_violations = sum(1 for d in data if d['necessity'] == 1)
+    clarity_violations = sum(1 for d in data if d['clarity'] == 1)
+    no_violations = sum(1 for d in data if d['necessity'] == 0 and d['clarity'] == 0)
+
+    print(f"\n✅ 无违规 (0, 0):           {no_violations:4} 条 ({no_violations/len(data)*100:5.2f}%)")
+    print(f"⚠️  存在必要性违规 (1,*):     {necessity_violations:4} 条 ({necessity_violations/len(data)*100:5.2f}%)")
+    print(f"⚠️  存在清晰性违规 (*,1):     {clarity_violations:4} 条 ({clarity_violations/len(data)*100:5.2f}%)")
+
+    print("\n" + "=" * 80)
+    print("📊 数据集特征")
+    print("=" * 80)
+
+    has_violations = sum(1 for d in data if d['necessity'] == 1 or d['clarity'] == 1)
+    print(f"\n有违规的数据:     {has_violations:4} 条 ({has_violations/len(data)*100:5.2f}%)")
+    print(f"无违规的数据:     {no_violations:4} 条 ({no_violations/len(data)*100:5.2f}%)")
+
+    # 类别平衡性分析
+    print("\n" + "-" * 80)
+    print("⚖️  类别平衡性分析:")
+    print("-" * 80)
+
+    max_count = max(label_combinations.values())
+    min_count = min(label_combinations.values())
+    imbalance_ratio = max_count / min_count
+
+    print(f"最多类别样本数: {max_count} 条")
+    print(f"最少类别样本数: {min_count} 条")
+    print(f"不平衡比例: {imbalance_ratio:.2f}:1")
+
+    if imbalance_ratio < 1.5:
+        balance_status = "✅ 非常平衡"
+    elif imbalance_ratio < 2.0:
+        balance_status = "✅ 基本平衡"
+    elif imbalance_ratio < 3.0:
+        balance_status = "⚠️  轻微不平衡"
+    else:
+        balance_status = "❌ 严重不平衡"
+
+    print(f"平衡状态: {balance_status}")
+
+    # 数据样本示例
+    print("\n" + "=" * 80)
+    print("📝 数据样本示例")
+    print("=" * 80)
+
+    for (necessity, clarity), _ in label_combinations.most_common():
+        # 找到该类别的第一个样本
+        for item in data:
+            if item['necessity'] == necessity and item['clarity'] == clarity:
+                label_name = f"({necessity}, {clarity})"
+                print(f"\n【标签 {label_name}】")
+                text = item['text'][:100] + "..." if len(item['text']) > 100 else item['text']
+                print(f"文本: {text}")
+                break
+
+    print("\n" + "=" * 80)
+    print("✅ 分析完成")
+    print("=" * 80)
+
+    # 返回统计结果
+    return {
+        'total': len(data),
+        'combinations': dict(label_combinations),
+        'necessity_violations': necessity_violations,
+        'clarity_violations': clarity_violations,
+        'no_violations': no_violations,
+        'has_violations': has_violations,
+        'imbalance_ratio': imbalance_ratio
+    }
+
+if __name__ == "__main__":
+    stats = analyze_label_distribution()

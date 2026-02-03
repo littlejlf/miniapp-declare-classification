@@ -53,13 +53,11 @@ with open(DATA_FILE, 'r', encoding='utf-8') as f:
         if line.strip():
             item = json.loads(line.strip())
             # 提取文本和标签
-            # 假设JSONL格式: {"appid": "...", "declare": "...", "necessity": 0/1, "clarity": 0/1}
+            # JSONL格式: {"statement": "...", "label": [necessity, clarity]}
+            labels = item.get('label', [0, 0])
             data.append({
-                'text': item.get('declare', ''),
-                'labels': [
-                    item.get('necessity', 0),  # 必要性违规
-                    item.get('clarity', 0)      # 清晰性违规
-                ]
+                'text': item.get('statement', ''),
+                'labels': labels  # [necessity, clarity]
             })
 
 df = pd.DataFrame(data)
