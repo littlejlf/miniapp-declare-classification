@@ -296,7 +296,7 @@ def main():
     # 获取预测结果
     raw_pred, _, _ = trainer.predict(tokenized_datasets["validation"])
     y_pred = np.argmax(raw_pred, axis=1)
-    y_true = tokenized_datasets["validation"]["labels"].numpy()
+    y_true = np.array(tokenized_datasets["validation"]["labels"])
 
     # 打印分类报告
     print("\n" + classification_report(
