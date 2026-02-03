@@ -159,8 +159,19 @@ training_args = TrainingArguments(
 )
 
 # --- 8. 初始化并开始训练 ---
-# 【修改】 - 使用标准的Trainer，不再需要CustomTrainer
-trainer = Trainer(
+# 定义带历史记录的Trainer
+class HistoryTrainer(Trainer):
+    """带训练历史记录的Trainer"""
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.training_history = []
+
+    def log(self, logs: dict) -> None:
+        super().log(logs)
+        if any(key.startswith('eval_') for key in logs.keys()):
+            self.training_history.append(logs.copy())
+
+trainer = HistoryTrainer(
     model=model,
     args=training_args,
     train_dataset=tokenized_datasets["train"],
@@ -180,4 +191,66 @@ logger.info(f"最终验证集评估结果: {eval_results}")
 
 logger.info(f"将最佳模型保存到 {OUTPUT_DIR}")
 trainer.save_model(OUTPUT_DIR)
+
+# --- 10. 保存训练结果（用于论文画图）---
+results_dir = OUTPUT_DIR / "training_results"
+results_dir.mkdir(parents=True, exist_ok=True)
+logger.info(f"\n保存训练结果到: {results_dir}")
+
+import csv
+from datetime import datetime
+
+# 10.1 保存训练历史CSV
+if trainer.training_history:
+    history_file = results_dir / "training_history.csv"
+    with open(history_file, 'w', newline='', encoding='utf-8') as f:
+        writer = csv.writer(f)
+        headers = sorted({k for log in trainer.training_history for k in log.keys()
+                        if not k.startswith('_')})
+        writer.writerow(headers)
+        for log in trainer.training_history:
+            writer.writerow([log.get(h, '') for h in headers])
+    logger.info(f"  训练历史已保存: {history_file}")
+
+# 10.2 保存最终评估结果JSON
+final_results = {
+    'task': 'multilabel_classification',
+    'model_name': MODEL_NAME,
+    'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+    'total_epochs': NUM_EPOCHS,
+    'train_samples': len(train_df),
+    'val_samples': len(val_df),
+    'final_metrics': {
+        'f1_macro': float(eval_results.get('eval_f1_macro', 0)),
+        'precision_macro': float(eval_results.get('eval_precision_macro', 0)),
+        'recall_macro': float(eval_results.get('eval_recall_macro', 0)),
+        'subset_accuracy': float(eval_results.get('eval_subset_accuracy', 0)),
+        'loss': float(eval_results.get('eval_loss', 0))
+    }
+}
+
+final_results_file = results_dir / "final_evaluation.json"
+with open(final_results_file, 'w', encoding='utf-8') as f:
+    json.dump(final_results, f, ensure_ascii=False, indent=2)
+logger.info(f"  最终评估结果已保存: {final_results_file}")
+
+# 10.3 保存评估报告TXT
+report_file = results_dir / "evaluation_report.txt"
+with open(report_file, 'w', encoding='utf-8') as f:
+    f.write(f"多标签分类模型 - 评估报告\n")
+    f.write(f"{'='*60}\n\n")
+    f.write(f"时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+    f.write(f"模型: {MODEL_NAME}\n")
+    f.write(f"任务: 多标签分类（必要性 + 表述模糊）\n")
+    f.write(f"训练轮数: {NUM_EPOCHS}\n")
+    f.write(f"训练样本: {len(train_df)}\n")
+    f.write(f"验证样本: {len(val_df)}\n\n")
+    f.write(f"{'='*60}\n")
+    f.write(f"\n最终验证集评估结果:\n\n")
+    for key, value in eval_results.items():
+        if isinstance(value, float):
+            f.write(f"  {key}: {value:.4f}\n")
+logger.info(f"  评估报告已保存: {report_file}")
+
+logger.info(f"\n所有结果已保存到: {results_dir}/")
 logger.info("模型保存完成")

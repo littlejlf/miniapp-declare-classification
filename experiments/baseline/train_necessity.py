@@ -58,11 +58,12 @@ logger = get_logger(__name__)
 
 class WeightedTrainer(Trainer):
     """
-    带类别权重的Trainer
+    带类别权重��Trainer，记录训练历史
     """
     def __init__(self, class_weights=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.class_weights = class_weights
+        self.training_history = []  # 记录训练历史
 
     def compute_loss(self, model, inputs, return_outputs=False, num_items_in_batch=None):
         """
@@ -88,6 +89,15 @@ class WeightedTrainer(Trainer):
             loss = loss_fct(logits.view(-1, self.model.config.num_labels), labels.view(-1))
 
         return (loss, outputs) if return_outputs else loss
+
+    def log(self, logs: dict[str, float]) -> None:
+        """
+        重写log方法，记录训练历史
+        """
+        super().log(logs)
+        # 只在评估时记录（包含eval_*指标的logs）
+        if any(key.startswith('eval_') for key in logs.keys()):
+            self.training_history.append(logs.copy())
 
 
 def calculate_class_weights(labels, method='balanced'):
@@ -332,8 +342,98 @@ def main():
     config_file = OUTPUT_DIR / "config.json"
     with open(config_file, 'w', encoding='utf-8') as f:
         json.dump(config, f, ensure_ascii=False, indent=2)
-
     logger.info(f"配置已保存到: {config_file}")
+
+    # 11. 保存训练结果（用于论文画图）
+    results_dir = OUTPUT_DIR / "training_results"
+    results_dir.mkdir(parents=True, exist_ok=True)
+    logger.info(f"\n保存训练结果到: {results_dir}")
+
+    # 11.1 保存训练历史CSV
+    import csv
+    from datetime import datetime
+
+    if trainer.training_history:
+        history_file = results_dir / "training_history.csv"
+        with open(history_file, 'w', newline='', encoding='utf-8') as f:
+            writer = csv.writer(f)
+            # 写入表头
+            headers = sorted({k for log in trainer.training_history for k in log.keys()
+                            if not k.startswith('_')})
+            writer.writerow(headers)
+            # 写入数据
+            for log in trainer.training_history:
+                writer.writerow([log.get(h, '') for h in headers])
+        logger.info(f"  训练历史已保存: {history_file}")
+
+    # 11.2 保存最终评估结果JSON
+    final_results = {
+        'task': 'necessity_classification',
+        'model_name': MODEL_NAME,
+        'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+        'total_epochs': NUM_EPOCHS,
+        'best_epoch': int(trainer.state.best_model_checkpoint.split('-')[-1]) if trainer.state.best_model_checkpoint else NUM_EPOCHS,
+        'class_weights': class_weights.tolist(),
+        'train_samples': len(train_df),
+        'val_samples': len(val_df),
+        'final_metrics': {
+            'accuracy': float(eval_results.get('eval_accuracy', 0)),
+            'precision': float(eval_results.get('eval_precision', 0)),
+            'recall': float(eval_results.get('eval_recall', 0)),
+            'f1': float(eval_results.get('eval_f1', 0)),
+            'loss': float(eval_results.get('eval_loss', 0))
+        },
+        'confusion_matrix': {
+            'TN': int(cm[0,0]),
+            'FP': int(cm[0,1]),
+            'FN': int(cm[1,0]),
+            'TP': int(cm[1,1]),
+            'matrix': cm.tolist()
+        }
+    }
+
+    final_results_file = results_dir / "final_evaluation.json"
+    with open(final_results_file, 'w', encoding='utf-8') as f:
+        json.dump(final_results, f, ensure_ascii=False, indent=2)
+    logger.info(f"  最终评估结果已保存: {final_results_file}")
+
+    # 11.3 保存分类报告TXT
+    report_file = results_dir / "classification_report.txt"
+    with open(report_file, 'w', encoding='utf-8') as f:
+        f.write(f"必要性违规分类模型 - 评估报告\n")
+        f.write(f"{'='*60}\n\n")
+        f.write(f"时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+        f.write(f"模型: {MODEL_NAME}\n")
+        f.write(f"训练轮数: {NUM_EPOCHS}\n")
+        f.write(f"训练样本: {len(train_df)}\n")
+        f.write(f"验证样本: {len(val_df)}\n")
+        f.write(f"类别权重: {class_weights.tolist()}\n\n")
+        f.write(f"{'='*60}\n\n")
+        f.write(classification_report(
+            y_true, y_pred,
+            target_names=['正常', '违规'],
+            digits=4
+        ))
+        f.write(f"\n{'='*60}\n")
+        f.write(f"\n混淆矩阵:\n")
+        f.write(f"  TN={cm[0,0]}, FP={cm[0,1]}\n")
+        f.write(f"  FN={cm[1,0]}, TP={cm[1,1]}\n")
+    logger.info(f"  分类报告已保存: {report_file}")
+
+    # 11.4 保存混淆矩阵JSON
+    confusion_file = results_dir / "confusion_matrix.json"
+    with open(confusion_file, 'w', encoding='utf-8') as f:
+        json.dump({
+            'matrix': cm.tolist(),
+            'labels': ['正常', '违规'],
+            'TN': int(cm[0,0]),
+            'FP': int(cm[0,1]),
+            'FN': int(cm[1,0]),
+            'TP': int(cm[1,1])
+        }, f, ensure_ascii=False, indent=2)
+    logger.info(f"  混淆矩阵已保存: {confusion_file}")
+
+    logger.info(f"\n所有结果已保存到: {results_dir}/")
     logger.info("训练完成!")
 
 
