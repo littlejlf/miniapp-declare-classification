@@ -1,0 +1,298 @@
+\chapter{隐私声明目的合理性分类}
+\label{chap:classification}
+
+\section{引言}
+
+随着移动互联网的快速发展，小程序已成为用户日常生活中的重要应用形态。然而，大量小程序在收集用户个人信息时存在隐私声明不规范的问题，主要表现为两大类违规：
+\begin{enumerate}
+    \item \textbf{必要性违规}：数据收集目的与手段之间存在逻辑矛盾，或存在隐私侵害更小的替代方案
+    \item \textbf{表述模糊违规}：声明文本表述不清、场景缺失或过于宽泛，导致用户无法准确理解数据用途
+\end{enumerate}
+
+针对上述问题，本章提出了一种基于大语言模型的隐私声明合理性分类方法，旨在自动化识别这两类违规声明。
+
+\section{问题定义与挑战}
+
+\subsection{任务定义}
+
+给定一条隐私声明文本 $s$，分类任务的目标是判断其在两个维度上的违规情况：
+\begin{itemize}
+    \item 必要性违规：$y_{\text{nec}} \in \{0, 1\}$，其中 $0$ 表示合理，$1$ 表示存在必要性违规
+    \item 表述模糊违规：$y_{\text{amb}} \in \{0, 1\}$，其中 $0$ 表示清晰，$1$ 表示存在表述模糊违规
+\end{itemize}
+
+\subsection{技术挑战}
+
+\textbf{挑战1：} 隐私合规涉及法律、技术、业务等多领域知识，通用模型缺乏隐性领域知识。
+
+\textbf{挑战2：} 违规判定存在模糊边界，例如"为了提升服务质量"这类表述在某些场景下可接受，在其他场景下则构成违规。
+
+\textbf{挑战3：} 在线LLM推理成本高昂，难以大规模部署。
+
+\section{方法}
+
+本章提出三阶段技术路线，如图\ref{fig:pipeline}所示。
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.9\textwidth]{figures/pipeline.pdf}
+    \caption{隐私声明分类三阶段技术路线}
+    \label{fig:pipeline}
+\end{figure}
+
+\subsection{阶段一：深度提示工程}
+
+\subsubsection{分类提示词设计}
+
+针对必要性违规和表述模糊违规，分别设计专门的提示词。
+
+\textbf{必要性违规提示词：}
+包含目的异常和可替代冗余的详细判断准则。
+
+\textbf{表述模糊违规提示词：}
+包含语义重复、场景缺失、表述宽泛的判断准则。
+
+\subsubsection{负面锚点与对比示例}
+
+引入负面锚点（Negative Anchors）帮助模型界定违规边界：
+\begin{itemize}
+    \item 目的异常示例："为了系统开发，开发者收集你的位置信息"
+    \item 可替代冗余示例："为了上传头像而申请相册写入权限"
+    \item 场景缺失示例："为了上传图片，开发者需要获取你选中的图片"
+\end{itemize}
+
+\subsubsection{思维链引导}
+
+强制模型先生成判别依据，再输出标签：
+\begin{verbatim}
+思考步骤：
+1. 分析声明中的数据类型
+2. 判断收集目的是否合理
+3. 检查是否存在更小侵害的替代方案
+4. 给出最终判定
+\end{verbatim}
+
+\subsection{阶段二：指令微调（未来工作）}
+
+\subsubsection{指令数据构建}
+
+基于阶段一的高质量预测结果，构建指令微调数据集：
+$$\mathcal{D} = \{(\text{instruction}, \text{input}, \text{output})_i\}_{i=1}^N$$
+
+\subsubsection{参数高效微调}
+
+采用LoRA/QLoRA技术对Llama-3-8B等开源基座进行微调。
+
+\subsection{阶段三：模型蒸馏（未来工作）}
+
+使用知识蒸馏技术将大模型能力迁移到1.5B/3B参数量的学生模型，实现工程化部署。
+
+\section{实验}
+
+\subsection{数据集}
+
+\subsubsection{数据收集}
+
+从真实小程序中收集隐私声明，最终构建包含1137条标注样本的数据集。
+
+\subsubsection{标注维度}
+
+每条声明在两个维度上进行标注：必要性违规和表述模糊违规。
+
+\subsubsection{数据分布}
+
+表\ref{tab:data_distribution}展示了数据集的标签分布情况。
+
+\begin{table}[htbp]
+    \centering
+    \caption{数据集标签分布}
+    \label{tab:data_distribution}
+    \begin{tabular}{lccc}
+        \toprule
+        维度 & 负样本（正常/清晰） & 正样本（违规/模糊） & 总计 \\
+        \midrule
+        必要性违规 & 910 (80.0\%) & 227 (20.0\%) & 1137 \\
+        表述模糊违规 & 608 (53.5\%) & 529 (46.5\%) & 1137 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\subsection{实验设置}
+
+\subsubsection{基线模型}
+
+\textbf{BERT系列：}
+\begin{itemize}
+    \item RoBERTa-wwm-ext多标签分类
+    \item RoBERTa-wwm-ext单任务分类（必要性）
+    \item RoBERTa-wwm-ext单任务分类（表述模糊）
+\end{itemize}
+
+\textbf{训练配置：}
+\begin{itemize}
+    \item 优化器：AdamW
+    \item 学习率：$2 \times 10^{-5}$
+    \item 批次大小：16
+    \item 训练轮数：最多10轮（带早停，Patience=3）
+    \item 学习率调度：余弦退火
+    \item 类别权重：Balanced
+\end{itemize}
+
+\subsubsection{LLM配置}
+
+\textbf{模型：} Qwen-Plus（阿里云DashScope API）
+
+\textbf{提示词：}
+\begin{itemize}
+    \item 统一分类提示词（同时评估两个维度）
+    \item 必要性独立提示词
+    \item 表述模糊独立提示词
+\end{itemize}
+
+\subsubsection{评估指标}
+
+\begin{itemize}
+    \item 准确率（Accuracy）
+    \item 精确率（Precision）
+    \item 召回率（Recall）
+    \item F1分数（F1-Score）
+\end{itemize}
+
+\subsection{实验结果}
+
+\subsubsection{基线模型性能}
+
+表\ref{tab:baseline_results}展示了BERT系列模型的性能。
+
+\begin{table}[htbp]
+    \centering
+    \caption{BERT基线模型性能}
+    \label{tab:baseline_results}
+    \begin{tabular}{lcccc}
+        \toprule
+        模型 & Accuracy & Precision & Recall & F1 \\
+        \midrule
+        多标签分类 & 待填入 & 待填入 & 待填入 & 待填入 \\
+        必要性（单任务） & 待填入 & 待填入 & 待填入 & 待填入 \\
+        表述模糊（单任务） & 待填入 & 待填入 & 待填入 & 待填入 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\subsubsection{LLM分类器性能}
+
+表\ref{tab:llm_results}展示了LLM分类器的性能。
+
+\begin{table}[htbp]
+    \centering
+    \caption{LLM分类器性能}
+    \label{tab:llm_results}
+    \begin{tabular}{lcccc}
+        \toprule
+        分类器 & Accuracy & Precision & Recall & F1 \\
+        \midrule
+        统一分类 & 待填入 & 待填入 & 待填入 & 待填入 \\
+        必要性（独立） & 待填入 & 待填入 & 待填入 & 待填入 \\
+        表述模糊（独立） & 待填入 & 待填入 & 待填入 & 待填入 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\subsubsection{对比分析}
+
+图\ref{fig:comparison}展示了BERT基线与LLM分类器的性能对比。
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.8\textwidth]{figures/comparison.pdf}
+    \caption{BERT vs LLM性能对比}
+    \label{fig:comparison}
+\end{figure}
+
+\subsubsection{一致性分析}
+
+表\ref{tab:consistency}展示了统一分类与独立分类的一致性分析。
+
+\begin{table}[htbp]
+    \centering
+    \caption{分类器一致性分析}
+    \label{tab:consistency}
+    \begin{tabular}{lcc}
+        \toprule
+        维度 & 一致率 & Cohen's Kappa \\
+        \midrule
+        必要性 & 待填入 & 待填入 \\
+        表述模糊 & 待填入 & 待填入 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\subsection{消融实验}
+
+\subsubsection{提示策略影响}
+
+表\ref{tab:ablation}展示了不同提示策略对性能的影响。
+
+\begin{table}[htbp]
+    \centering
+    \caption{提示策略消融实验}
+    \label{tab:ablation}
+    \begin{tabular}{lcc}
+        \toprule
+        提示策略 & 必要性 F1 & 表述模糊 F1 \\
+        \midrule
+        基础提示 & 待填入 & 待填入 \\
+        + 锚点示例 & 待填入 & 待填入 \\
+        + 思维链 & 待填入 & 待填入 \\
+        + 对比示例 & 待填入 & 待填入 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\subsection{案例分析}
+
+\subsubsection{正确案例}
+
+\textbf{示例1：} "为了门店打卡和位置校准，开发者收集你的位置信息"
+
+\textit{分析：} 目的明确且必要，两个模型均判定为正常。
+
+\subsubsection{错误案例}
+
+\textbf{示例2：} "为了系统开发，开发者收集你的��置信息"
+
+\textit{分析：} BERT误判为正常，LLM正确识别为目的异常。
+
+\section{讨论}
+
+\subsection{单任务 vs 多任务分类}
+
+实验表明，单任务分类在两个维度上均优于多任务分类，可能原因：
+\begin{itemize}
+    \item 两个任务的决策逻辑存在差异
+    \item 单任务可以针对特定维度优化类别权重
+\end{itemize}
+
+\subsection{统一分类 vs 独立分类}
+
+统一分类在效率上更优（一次调用），但独立分类在性能上略优，且可解释性更强。
+
+\subsection{模型选择建议}
+
+\begin{itemize}
+    \item \textbf{高精度场景}：使用LLM独立分类器
+    \item \textbf{大规模检测}：使用BERT单任务模型
+    \item \textbf{实时推理}：考虑使用蒸馏后的轻量模型
+\end{itemize}
+
+\section{本章小结}
+
+本章针对隐私声明合理性分类问题，提出了基于深度提示工程的LLM分类方法。通过设计专门的提示词、引入负面锚点和对比示例、结合思维链引导，显著提升了分类性能。实验结果表明：
+
+\begin{enumerate}
+    \item LLM分类器在两个维度上均优于BERT基线
+    \item 单任务分类优于多任务分类
+    \item 深度提示工程能有效激发模型性能
+\end{enumerate}
+
+未来工作将进一步探索指令微调和模型蒸馏技术，实现性能与效率的平衡。

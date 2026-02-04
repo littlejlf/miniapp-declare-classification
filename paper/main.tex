@@ -1,0 +1,108 @@
+\documentclass[12pt,a4paper]{report}
+
+% 中文支持
+\usepackage{ctex}
+
+% 页面设置
+\usepackage[top=2.5cm, bottom=2.5cm, left=2.5cm, right=2.5cm]{geometry}
+
+% 数学公式
+\usepackage{amsmath, amssymb, amsfonts}
+
+% 图片
+\usepackage{graphicx}
+\graphicspath{{figures/}}  % 图片目录
+
+% 表格
+\usepackage{booktabs}  % 三线表
+\usepackage{multirow}
+\usepackage{array}
+\usepackage{longtable}
+
+% 代码
+\usepackage{listings}
+\usepackage{xcolor}
+
+% 超链接
+\usepackage[colorlinks=true, linkcolor=blue, citecolor=blue, urlcolor=blue]{hyperref}
+
+% 参考文献（可选）
+% \usepackage{cite}
+
+% 算法（可选）
+% \usepackage{algorithm}
+% \usepackage{algorithmic}
+
+% 代码高亮设置
+\lstset{
+    basicstyle=\ttfamily\footnotesize,
+    keywordstyle=\color{blue},
+    commentstyle=\color{gray},
+    stringstyle=\color{red},
+    breaklines=true,
+    frame=single,
+    numbers=left,
+    numberstyle=\tiny,
+    tabsize=4
+}
+
+% 标题设置
+\usepackage{titlesec}
+
+% 论文信息
+\title{\textbf{面向小程序隐私合规检测的自动化框架}\\
+\textbf{MiniEval 设计与研究}}
+\author{作者姓名}
+\date{\today}
+
+\begin{document}
+
+% 封面
+\maketitle
+
+% 中文摘要
+\begin{abstract}
+随着移动互联网的快速发展，小程序已成为用户日常生活中的重要应用形态。然而，大量小程序在收集用户个人信息时存在隐私声明不规范的问题，主要表现为必要性违规和表述模糊违规。针对这一问题，本文提出了MiniEval框架，通过结合静态程序分析和大语言模型技术，实现隐私合规的自动化检测。本文重点研究了隐私声明的合理性分类问题，提出了基于深度提示工程的分类方法，并通过实验验证了其有效性。
+
+\textbf{关键词：} 隐私合规；小程序；大语言模型；提示工程；自动化检测
+\end{abstract}
+
+% 目录
+\tableofcontents
+
+% 图表目录
+\listoffigures
+\listoftables
+
+% 第一章
+\chapter{绪论}
+\label{chap:intro}
+本章内容待补充...
+
+% 第二章
+\chapter{MiniEval 框架设计与行为违规检测}
+\label{chap:mineval}
+本章内容待补充...
+
+% 第三章（核心章节）
+\input{chapter3.tex}
+
+% 第四章
+\chapter{隐私风险量化评估与生态实证分析}
+\label{chap:risk}
+本章内容待补充...
+
+% 第五章
+\chapter{总结与展望}
+\label{chap:conclusion}
+本章内容待补充...
+
+% 参考文献（如果需要）
+% \bibliographystyle{plain}
+% \bibliography{references}
+
+% 附录（可选）
+% \appendix
+% \chapter{补充材料}
+
+\end{document}

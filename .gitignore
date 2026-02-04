@@ -96,3 +96,13 @@ experiments/baseline/model/
 .history/
 
 error.txt
+
+# Paper directory - ignore large PDF files
+paper/*.pdf
+paper/figures/*.pdf
+paper/figures/*.png
+paper/*.tex.bak
+paper/*.aux
+paper/*.log
+paper/*.out
+paper/*.toc
