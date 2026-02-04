@@ -210,6 +210,96 @@ python experiments/llm_prompting/evaluate_classification.py \
     --type both
 ```
 
+### 3.4 采样分类结果
+
+使用 `sample_llm_results.py` 从分类结果中按比例采样，用于：
+- 人工审核
+- 案例分析
+- 论文示例
+- 数据增强
+
+#### 按1:1:1:1比例采样
+
+从两个维度的四种组合中等比例采样：
+- (正常, 清晰)
+- (正常, 模糊)
+- (违规, 清晰)
+- (违规, 模糊)
+
+```bash
+python experiments/llm_prompting/sample_llm_results.py \
+    --input results/predictions/llm_independent_merged.jsonl \
+    --output results/predictions/llm_sampled_200.jsonl \
+    --size 200
+```
+
+**参数说明：**
+- `--input`: 输入文件路径
+- `--output`: 输出文件路径
+- `--size`: 总采样数（默认200）
+- `--seed`: 随机种子（默认42）
+
+**输出示例：**
+```
+目标总数: 200
+实际采样: 200
+
+各组采样数:
+  正常-清晰: 50 条 (25.0%)
+  正常-模糊: 50 条 (25.0%)
+  违规-清晰: 50 条 (25.0%)
+  违规-模糊: 50 条 (25.0%)
+```
+
+#### 使用Python API
+
+```python
+from utils.sampler import sample_from_llm_results
+
+# 采样200条
+data, stats = sample_from_llm_results(
+    input_file="results/predictions/llm_unified_results.jsonl",
+    output_file="results/predictions/llm_sampled.jsonl",
+    sample_size=200
+)
+
+print(f"采样了 {len(data)} 条数据")
+print(f"统计: {stats}")
+```
+
+#### 自定义schema采样
+
+对于更复杂的采样需求，可以使用`SchemaSampler`：
+
+```python
+from utils.sampler import SchemaSampler
+
+# 定义采样schema
+sampler = SchemaSampler(
+    schema=["field1", "field2"],  # 分组字段
+    input_file="input.jsonl",
+    output_file="output.jsonl",
+    sample_size=100,
+    ratios=[0.25, 0.25, 0.25, 0.25],  # 各组比例
+    random_seed=42
+)
+
+# 运行采样
+data, stats = sampler.run()
+```
+    --labels data/raw/aggregate_datas_label.jsonl \
+    --type compare
+```
+
+#### 评估所有分类器
+
+```bash
+python experiments/llm_prompting/evaluate_classification.py \
+    --input results/predictions/llm_independent_merged.jsonl \
+    --labels data/raw/aggregate_datas_label.jsonl \
+    --type both
+```
+
 **评估报告输出**:
 | 文件 | 说明 |
 |------|------|

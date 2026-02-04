@@ -155,7 +155,7 @@ def evaluate_unified_results(
             "metrics": all_metrics,
             "detailed_results": matched
         }
-        report_file = output_dir / "unified_evaluation_report.json"
+        report_file = output_dir / "llm_prompt_unified_evaluation_report.json"
         with open(report_file, 'w', encoding='utf-8') as f:
             json.dump(report, f, ensure_ascii=False, indent=2)
         logger.info(f"评估报告已保存到: {report_file}")
