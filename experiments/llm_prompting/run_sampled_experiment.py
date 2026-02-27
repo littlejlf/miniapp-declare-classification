@@ -35,7 +35,7 @@ if str(project_root) not in sys.path:
 DASHSCOPE_API_KEY = "sk-071feb0c2b074feabbac6677c5954ef8"
 
 # 模型配置
-MODEL_ID = "qwen-3-14b"  # 使用qwen-3-14b模型
+MODEL_ID = "qwen3-14b"  # 使用qwen3-14b模型
 TEMPERATURE = 0.1
 
 # 采样配置

@@ -20,13 +20,19 @@ pyyaml>=5.4.0
 tqdm>=4.62.0
 backoff>=2.1.0
 
-# 可视化 (可选)
+# 可视化
 matplotlib>=3.4.0
 seaborn>=0.11.0
 
 # Jupyter (可选)
 jupyter>=1.0.0
 ipykernel>=6.0.0
+
+# 网络请求
+requests>=2.25.0
+
+# 类型检查 (可选)
+# typing-extensions>=4.0.0
 
 # 数据增强 (可选)
 # jieba>=0.42.0
