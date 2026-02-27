@@ -1,0 +1,84 @@
+{
+  "model_id": "qwen3-14b",
+  "total_samples": 200,
+  "label_distribution": {
+    "necessity_violations": 55,
+    "necessity_total": 200,
+    "ambiguity_violations": 96,
+    "ambiguity_total": 200
+  },
+  "unified_classifier": {
+    "necessity": {
+      "accuracy": 0.745,
+      "precision": 0.5277777777777778,
+      "recall": 0.6909090909090909,
+      "f1": 0.5984251968503937,
+      "confusion_matrix": [
+        [
+          111,
+          34
+        ],
+        [
+          17,
+          38
+        ]
+      ],
+      "matched": 200
+    },
+    "ambiguity": {
+      "accuracy": 0.7,
+      "precision": 0.6216216216216216,
+      "recall": 0.9583333333333334,
+      "f1": 0.7540983606557377,
+      "confusion_matrix": [
+        [
+          48,
+          56
+        ],
+        [
+          4,
+          92
+        ]
+      ],
+      "matched": 200
+    },
+    "exact_match_accuracy": 0.525,
+    "partial_match_accuracy": 0.92
+  },
+  "independent_classifiers": {
+    "necessity": {
+      "accuracy": 0.75,
+      "precision": 0.5287356321839081,
+      "recall": 0.8363636363636363,
+      "f1": 0.6478873239436619,
+      "confusion_matrix": [
+        [
+          104,
+          41
+        ],
+        [
+          9,
+          46
+        ]
+      ],
+      "matched": 200
+    },
+    "ambiguity": {
+      "accuracy": 0.745,
+      "precision": 0.6717557251908397,
+      "recall": 0.9166666666666666,
+      "f1": 0.7753303964757708,
+      "confusion_matrix": [
+        [
+          61,
+          43
+        ],
+        [
+          8,
+          88
+        ]
+      ],
+      "matched": 200
+    }
+  }
+}

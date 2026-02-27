@@ -21,9 +21,10 @@ import asyncio
 import platform
 import random
 from pathlib import Path
-from typing import List, Dict, Any, Optional, Deque
+from typing import List, Dict, Any, Optional, Deque, Tuple
 from datetime import datetime
 from collections import deque
+import numpy as np
 
 # 添加项目根目录到路径
 project_root = Path(__file__).parent.parent.parent
@@ -55,7 +56,7 @@ RATE_LIMIT_DELAY = 5.0
 MAX_RATE_LIMITS = 5
 
 # 输出配置
-OUTPUT_DIR = project_root / "results" / "predictions"
+OUTPUT_DIR = project_root / "results" / "predictions" / MODEL_ID
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 # 输入文件
@@ -246,6 +247,8 @@ class AdaptiveClassifier:
         start = time.time()
         result = {
             "statement": statement,
+            "model_id": MODEL_ID,
+            "classifier": self.name,
             "result": "",
             "status": "pending",
             "error": None,
@@ -346,6 +349,222 @@ class AdaptiveClassifier:
         print(f"\n\n完成! 总数: {total} | 成功: {success} | 失败: {failed} | 耗时: {elapsed:.1f}秒 | 平均: {elapsed/total:.2f}秒/条\n")
 
 
+# ==================== 评估函数 ====================
+def load_ground_truth(sample_file: Path) -> Dict[str, Tuple[int, int]]:
+    """加载真实标签"""
+    with open(sample_file, 'r', encoding='utf-8') as f:
+        data = json.load(f)
+
+    ground_truth = {}
+    for item in data:
+        statement = item["statement"]
+        label = item["label"]
+        ground_truth[statement] = (label[0], label[1])
+    return ground_truth
+
+
+def load_predictions(result_file: Path) -> Dict[str, Dict]:
+    """加载预测结果"""
+    predictions = {}
+    with open(result_file, 'r', encoding='utf-8') as f:
+        for line in f:
+            if not line.strip():
+                continue
+            try:
+                item = json.loads(line.strip())
+                statement = item.get("statement")
+                if item.get("status") == "success" and statement:
+                    if statement not in predictions:
+                        json_result = item.get("json")
+                        if json_result:
+                            predictions[statement] = json_result
+                        else:
+                            result_str = item.get("result", "")
+                            if result_str:
+                                try:
+                                    json_result = json.loads(result_str)
+                                    predictions[statement] = json_result
+                                except:
+                                    pass
+            except:
+                continue
+    return predictions
+
+
+def compute_metrics(y_true: List[int], y_pred: List[int]) -> Dict:
+    """计算分类指标"""
+    y_true = np.array(y_true)
+    y_pred = np.array(y_pred)
+
+    accuracy = np.mean(y_true == y_pred)
+    tp = np.sum((y_true == 1) & (y_pred == 1))
+    tn = np.sum((y_true == 0) & (y_pred == 0))
+    fp = np.sum((y_true == 0) & (y_pred == 1))
+    fn = np.sum((y_true == 1) & (y_pred == 0))
+
+    precision = tp / (tp + fp) if (tp + fp) > 0 else 0.0
+    recall = tp / (tp + fn) if (tp + fn) > 0 else 0.0
+    f1 = 2 * precision * recall / (precision + recall) if (precision + recall) > 0 else 0.0
+
+    cm = np.zeros((2, 2), dtype=int)
+    for true_label, pred_label in zip(y_true, y_pred):
+        cm[true_label][pred_label] += 1
+
+    return {
+        "accuracy": float(accuracy),
+        "precision": float(precision),
+        "recall": float(recall),
+        "f1": float(f1),
+        "confusion_matrix": cm.tolist(),
+        "tp": int(tp), "tn": int(tn), "fp": int(fp), "fn": int(fn)
+    }
+
+
+def evaluate_classifier(
+    ground_truth: Dict[str, Tuple[int, int]],
+    predictions: Dict[str, Dict],
+    dimension: str
+) -> Dict:
+    """评估单个分类器"""
+    y_true, y_pred = [], []
+    matched = 0
+
+    for statement, (nec_true, amb_true) in ground_truth.items():
+        true_label = nec_true if dimension == "necessity" else amb_true
+        if statement in predictions:
+            pred = predictions[statement]
+            pred_label = int(pred.get(f"has_{dimension}_violation", False))
+            y_true.append(true_label)
+            y_pred.append(pred_label)
+            matched += 1
+
+    if not y_true:
+        return {"error": "No valid predictions"}
+
+    metrics = compute_metrics(y_true, y_pred)
+    metrics["matched"] = matched
+    metrics["total"] = len(ground_truth)
+    return metrics
+
+
+def print_evaluation_report(result_dir: Path, model_id: str):
+    """打印评估报告"""
+    sample_file = result_dir / f"sampled_200_list.json"
+    if not sample_file.exists():
+        print("\n未找到采样数据文件，跳过评估")
+        return
+
+    print("\n" + "="*70)
+    print("开始评估实验结果...")
+    print("="*70)
+
+    # 加载真实标签
+    ground_truth = load_ground_truth(sample_file)
+    print(f"加载了 {len(ground_truth)} 条真实标签")
+
+    # 统计标签分布
+    nec_labels = [label[0] for label in ground_truth.values()]
+    amb_labels = [label[1] for label in ground_truth.values()]
+
+    print(f"\n标签分布:")
+    print(f"  必要性违规: {sum(nec_labels)} / {len(nec_labels)} ({sum(nec_labels)/len(nec_labels)*100:.1f}%)")
+    print(f"  模糊性违规: {sum(amb_labels)} / {len(amb_labels)} ({sum(amb_labels)/len(amb_labels)*100:.1f}%)")
+
+    # 加载预测结果
+    unified_preds = load_predictions(result_dir / "llm_unified_results.jsonl")
+    nec_preds = load_predictions(result_dir / "llm_necessity_results.jsonl")
+    amb_preds = load_predictions(result_dir / "llm_ambiguity_results.jsonl")
+
+    print(f"\n预测结果:")
+    print(f"  统一分类器: {len(unified_preds)} 条")
+    print(f"  必要性分类器: {len(nec_preds)} 条")
+    print(f"  模糊性分类器: {len(amb_preds)} 条")
+
+    # 评估统一分类器
+    print("\n" + "="*70)
+    print("统一分类器评估")
+    print("="*70)
+
+    unified_nec = evaluate_classifier(ground_truth, unified_preds, "necessity")
+    unified_amb = evaluate_classifier(ground_truth, unified_preds, "ambiguity")
+
+    if "error" not in unified_nec:
+        print(f"\n必要性维度:")
+        print(f"  准确率: {unified_nec['accuracy']:.4f}")
+        print(f"  精确率: {unified_nec['precision']:.4f}")
+        print(f"  召回率: {unified_nec['recall']:.4f}")
+        print(f"  F1分数: {unified_nec['f1']:.4f}")
+        cm = unified_nec['confusion_matrix']
+        print(f"  混淆矩阵: TN={cm[0][0]}, FP={cm[0][1]}, FN={cm[1][0]}, TP={cm[1][1]}")
+
+    if "error" not in unified_amb:
+        print(f"\n模糊性维度:")
+        print(f"  准确率: {unified_amb['accuracy']:.4f}")
+        print(f"  精确率: {unified_amb['precision']:.4f}")
+        print(f"  召回率: {unified_amb['recall']:.4f}")
+        print(f"  F1分数: {unified_amb['f1']:.4f}")
+        cm = unified_amb['confusion_matrix']
+        print(f"  混淆矩阵: TN={cm[0][0]}, FP={cm[0][1]}, FN={cm[1][0]}, TP={cm[1][1]}")
+
+    # 评估独立分类器
+    print("\n" + "="*70)
+    print("独立分类器评估")
+    print("="*70)
+
+    nec_metrics = evaluate_classifier(ground_truth, nec_preds, "necessity")
+    amb_metrics = evaluate_classifier(ground_truth, amb_preds, "ambiguity")
+
+    if "error" not in nec_metrics:
+        print(f"\n必要性分类器:")
+        print(f"  准确率: {nec_metrics['accuracy']:.4f}")
+        print(f"  精确率: {nec_metrics['precision']:.4f}")
+        print(f"  召回率: {nec_metrics['recall']:.4f}")
+        print(f"  F1分数: {nec_metrics['f1']:.4f}")
+
+    if "error" not in amb_metrics:
+        print(f"\n模糊性分类器:")
+        print(f"  准确率: {amb_metrics['accuracy']:.4f}")
+        print(f"  精确率: {amb_metrics['precision']:.4f}")
+        print(f"  召回率: {amb_metrics['recall']:.4f}")
+        print(f"  F1分数: {amb_metrics['f1']:.4f}")
+
+    # 对比
+    if "error" not in unified_nec and "error" not in nec_metrics:
+        print(f"\n必要性对比:")
+        print(f"  统一 vs 独立 F1: {unified_nec['f1']:.4f} vs {nec_metrics['f1']:.4f} (差异: {nec_metrics['f1']-unified_nec['f1']:.4f})")
+
+    if "error" not in unified_amb and "error" not in amb_metrics:
+        print(f"模糊性对比:")
+        print(f"  统一 vs 独立 F1: {unified_amb['f1']:.4f} vs {amb_metrics['f1']:.4f} (差异: {amb_metrics['f1']-unified_amb['f1']:.4f})")
+
+    # 保存报告
+    report = {
+        "model_id": model_id,
+        "total_samples": len(ground_truth),
+        "label_distribution": {
+            "necessity_violations": sum(nec_labels),
+            "necessity_total": len(nec_labels),
+            "ambiguity_violations": sum(amb_labels),
+            "ambiguity_total": len(amb_labels)
+        },
+        "unified_classifier": {
+            "necessity": unified_nec if "error" not in unified_nec else {},
+            "ambiguity": unified_amb if "error" not in unified_amb else {}
+        },
+        "independent_classifiers": {
+            "necessity": nec_metrics if "error" not in nec_metrics else {},
+            "ambiguity": amb_metrics if "error" not in amb_metrics else {}
+        }
+    }
+
+    report_file = result_dir / "evaluation_report.json"
+    with open(report_file, 'w', encoding='utf-8') as f:
+        json.dump(report, f, ensure_ascii=False, indent=2)
+
+    print(f"\n评估报告已保存: {report_file}")
+    print("="*70)
+
+
 # ==================== 主程序 ====================
 async def main():
     print("="*70)
@@ -416,6 +635,9 @@ async def main():
     for f in OUTPUT_DIR.iterdir():
         if f.is_file():
             print(f"  - {f.name} ({f.stat().st_size:,} bytes)")
+
+    # 自动评估
+    print_evaluation_report(OUTPUT_DIR, MODEL_ID)
 
 
 if __name__ == "__main__":
