@@ -105,4 +105,4 @@ paper/*.tex.bak
 paper/*.aux
 paper/*.log
 paper/*.out
-paper/*.toc
+paper/*.tocresults/models/
