@@ -30,6 +30,8 @@ ipykernel>=6.0.0
 
 # 网络请求
 requests>=2.25.0
+httpx>=0.24.0
+tenacity>=8.2.0
 
 # 类型检查 (可选)
 # typing-extensions>=4.0.0
