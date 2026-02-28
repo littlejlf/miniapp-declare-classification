@@ -1,0 +1,28 @@
+{
+  "target_size": 250,
+  "actual_size": 250,
+  "label_distribution": {
+    "(0, 1)": 98,
+    "(0, 0)": 77,
+    "(1, 1)": 38,
+    "(1, 0)": 37
+  },
+  "necessity": {
+    "f1": 0.7344632768361582,
+    "accuracy": 0.812,
+    "tp": 65,
+    "fp": 37,
+    "fn": 10
+  },
+  "ambiguity": {
+    "f1": 0.9034482758620689,
+    "accuracy": 0.888,
+    "tp": 131,
+    "fp": 23,
+    "fn": 5
+  },
+  "comparison_with_bert": {
+    "necessity_f1_diff_pct": 6.776327683615824,
+    "ambiguity_f1_diff_pct": 5.414827586206883
+  }
+}

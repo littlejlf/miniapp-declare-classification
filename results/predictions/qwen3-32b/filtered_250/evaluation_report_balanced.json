@@ -1,0 +1,34 @@
+{
+  "sample_count": 250,
+  "label_distribution": {
+    "(1, 0)": 62,
+    "(0, 0)": 63,
+    "(1, 1)": 62,
+    "(0, 1)": 63
+  },
+  "label_distribution_ratio": "1:1:1:1",
+  "necessity_metrics": {
+    "accuracy": 0.7,
+    "precision": 0.6689655172413793,
+    "recall": 0.782258064516129,
+    "f1": 0.7211895910780669,
+    "tp": 97,
+    "fp": 48,
+    "fn": 27,
+    "tn": 78
+  },
+  "ambiguity_metrics": {
+    "accuracy": 0.896,
+    "precision": 0.8613138686131386,
+    "recall": 0.944,
+    "f1": 0.9007633587786258,
+    "tp": 118,
+    "fp": 19,
+    "fn": 7,
+    "tn": 106
+  },
+  "comparison_with_bert": {
+    "necessity_f1_diff_pct": 5.448959107806695,
+    "ambiguity_f1_diff_pct": 5.146335877862573
+  }
+}

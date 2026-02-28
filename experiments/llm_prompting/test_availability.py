@@ -12,7 +12,7 @@ import os
 import json
 import dashscope
 from dashscope import Generation
-FINETUNED_MODEL_ID="qwen3-14b"
+FINETUNED_MODEL_ID="qwen3-32b"
 def make_desition(new_statement = "为了进行App的错误分析和性能优化，开发者将收集你的精确位置信息"):
     # 准备一个新的、需要审计的隐私声明
     

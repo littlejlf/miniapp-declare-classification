@@ -1,0 +1,102 @@
+{
+  "model_id": "qwen3-32b",
+  "total_samples": 100,
+  "label_distribution": {
+    "necessity_violations": 26,
+    "necessity_total": 100,
+    "ambiguity_violations": 45,
+    "ambiguity_total": 100
+  },
+  "unified_classifier": {
+    "necessity": {
+      "accuracy": 0.76,
+      "precision": 0.5294117647058824,
+      "recall": 0.6923076923076923,
+      "f1": 0.5999999999999999,
+      "confusion_matrix": [
+        [
+          58,
+          16
+        ],
+        [
+          8,
+          18
+        ]
+      ],
+      "tp": 18,
+      "tn": 58,
+      "fp": 16,
+      "fn": 8,
+      "matched": 100,
+      "total": 100
+    },
+    "ambiguity": {
+      "accuracy": 0.64,
+      "precision": 0.5652173913043478,
+      "recall": 0.8666666666666667,
+      "f1": 0.6842105263157895,
+      "confusion_matrix": [
+        [
+          25,
+          30
+        ],
+        [
+          6,
+          39
+        ]
+      ],
+      "tp": 39,
+      "tn": 25,
+      "fp": 30,
+      "fn": 6,
+      "matched": 100,
+      "total": 100
+    }
+  },
+  "independent_classifiers": {
+    "necessity": {
+      "accuracy": 0.6,
+      "precision": 0.3870967741935484,
+      "recall": 0.9230769230769231,
+      "f1": 0.5454545454545454,
+      "confusion_matrix": [
+        [
+          36,
+          38
+        ],
+        [
+          2,
+          24
+        ]
+      ],
+      "tp": 24,
+      "tn": 36,
+      "fp": 38,
+      "fn": 2,
+      "matched": 100,
+      "total": 100
+    },
+    "ambiguity": {
+      "accuracy": 0.73,
+      "precision": 0.6285714285714286,
+      "recall": 0.9777777777777777,
+      "f1": 0.7652173913043477,
+      "confusion_matrix": [
+        [
+          29,
+          26
+        ],
+        [
+          1,
+          44
+        ]
+      ],
+      "tp": 44,
+      "tn": 29,
+      "fp": 26,
+      "fn": 1,
+      "matched": 100,
+      "total": 100
+    }
+  }
+}

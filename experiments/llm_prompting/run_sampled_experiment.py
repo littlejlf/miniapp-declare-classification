@@ -36,11 +36,11 @@ if str(project_root) not in sys.path:
 DASHSCOPE_API_KEY = "sk-071feb0c2b074feabbac6677c5954ef8"
 
 # 模型配置
-MODEL_ID = "qwen3-14b"  # 使用qwen3-14b模型
+MODEL_ID = "qwen3-32b"  # 使用qwen3-32b模型
 TEMPERATURE = 0.1
 
 # 采样配置
-SAMPLE_SIZE = 200  # 采样数量
+SAMPLE_SIZE = 100  # 采样数量
 SAMPLE_SEED = 42   # 随机种子
 
 # 并发配置 - 自适应
@@ -373,19 +373,35 @@ def load_predictions(result_file: Path) -> Dict[str, Dict]:
             try:
                 item = json.loads(line.strip())
                 statement = item.get("statement")
-                if item.get("status") == "success" and statement:
-                    if statement not in predictions:
-                        json_result = item.get("json")
-                        if json_result:
-                            predictions[statement] = json_result
-                        else:
-                            result_str = item.get("result", "")
-                            if result_str:
-                                try:
-                                    json_result = json.loads(result_str)
-                                    predictions[statement] = json_result
-                                except:
-                                    pass
+                if not statement:
+                    continue
+                if statement in predictions:
+                    continue
+
+                json_result = None
+
+                # 首先尝试读取json字段
+                if item.get("json"):
+                    json_result = item.get("json")
+                # 然后尝试解析result字段
+                elif item.get("result"):
+                    result_str = item.get("result", "")
+                    try:
+                        # 尝试直接解析
+                        json_result = json.loads(result_str)
+                    except:
+                        # 去除 ```json 和 ``` 标记后重试
+                        if '```json' in result_str:
+                            result_str = result_str.split('```json', 1)[1]
+                        if '```' in result_str:
+                            result_str = result_str.split('```')[0].strip()
+                        try:
+                            json_result = json.loads(result_str)
+                        except:
+                            pass
+
+                if json_result and isinstance(json_result, dict):
+                    predictions[statement] = json_result
             except:
                 continue
     return predictions
@@ -447,11 +463,17 @@ def evaluate_classifier(
     return metrics
 
 
-def print_evaluation_report(result_dir: Path, model_id: str):
+def print_evaluation_report(result_dir: Path, model_id: str, sample_size: int = SAMPLE_SIZE):
     """打印评估报告"""
-    sample_file = result_dir / f"sampled_200_list.json"
+    sample_file = result_dir / f"sampled_{sample_size}_list.json"
     if not sample_file.exists():
         print("\n未找到采样数据文件，跳过评估")
+        return
+
+    # 检查是否已经存在评估报告，如果存在则跳过
+    report_file = result_dir / f"evaluation_report_{sample_size}.json"
+    if report_file.exists():
+        print(f"\n评估报告已存在: {report_file}")
         return
 
     print("\n" + "="*70)
@@ -557,7 +579,7 @@ def print_evaluation_report(result_dir: Path, model_id: str):
         }
     }
 
-    report_file = result_dir / "evaluation_report.json"
+    report_file = result_dir / f"evaluation_report_{sample_size}.json"
     with open(report_file, 'w', encoding='utf-8') as f:
         json.dump(report, f, ensure_ascii=False, indent=2)
 
@@ -637,7 +659,7 @@ async def main():
             print(f"  - {f.name} ({f.stat().st_size:,} bytes)")
 
     # 自动评估
-    print_evaluation_report(OUTPUT_DIR, MODEL_ID)
+    print_evaluation_report(OUTPUT_DIR, MODEL_ID, SAMPLE_SIZE)
 
 
 if __name__ == "__main__":
